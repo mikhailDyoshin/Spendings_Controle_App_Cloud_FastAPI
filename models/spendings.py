@@ -1,10 +1,9 @@
-from typing import List
-
+from typing import List, Optional
 from pydantic import BaseModel
+from beanie import Document
 
 
-class Spending(BaseModel):
-    id: int
+class Spending(Document):
     date: str
     food: float
     transport: float
@@ -21,3 +20,14 @@ class Spending(BaseModel):
                 "total": 1132.0,
             }
         }
+
+    class Settings:
+        name="spendings"
+
+
+class SpendingUpdate(BaseModel):
+    date: Optional[str]
+    food: Optional[float]
+    transport: Optional[float]
+    shopping: Optional[float]
+    total: Optional[float]
