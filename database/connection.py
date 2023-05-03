@@ -4,11 +4,12 @@ from beanie import init_beanie, PydanticObjectId
 from models.spendings import Spending
 from models.users import User
 from motor.motor_asyncio import AsyncIOMotorClient
-from pydantic import BaseSettings, BaseModel
+from pydantic import BaseSettings, BaseModel, EmailStr
 
 
 class Settings(BaseSettings):
     DATABASE_URL: Optional[str] = None
+    SECRET_KEY: Optional[str] = None
 
     async def initialize_database(self):
         client = AsyncIOMotorClient(self.DATABASE_URL)
@@ -53,12 +54,12 @@ class Database:
             return False
 
 
-    async def get_all(self) -> List[Any]:
+    async def get_all(self, username:EmailStr) -> List[Any]:
         """
             Returns all existing documents in the database.
         """
         # Forming the list that stores all existing documents.
-        docs = await self.model.find_all().to_list()
+        docs = await self.model.find(self.model.creator == username).to_list()
         return docs
 
 

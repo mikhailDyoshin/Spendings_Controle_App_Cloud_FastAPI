@@ -21,21 +21,11 @@ class User(Document):
             }
         }
 
+    class Settings:
+        name="users"
 
-class UserSignIn(BaseModel):
-    """
-        This model will be used 
-        as the data type 
-        when registering a new user.
-    """
-    email: EmailStr
-    password: str
 
-    class Config:
-        schema_extra = {
-            "example": {
-                "email": "fastapi@mymail.com",
-                "password": "strong!!!"
-            }
-        }
-        
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+    

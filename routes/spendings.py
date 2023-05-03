@@ -1,8 +1,9 @@
 from typing import List
-from fastapi import APIRouter, Body, HTTPException, status
+from fastapi import APIRouter, Body, HTTPException, status, Depends
 from models.spendings import Spending, SpendingUpdate
 from database.connection import Database
 from beanie import PydanticObjectId
+from auth.authenticate import authenticate
 
 
 event_router = APIRouter(
@@ -13,26 +14,33 @@ spendings_database = Database(Spending)
 
 
 @event_router.get("/", response_model=List[Spending])
-async def retrieve_all_spendings() -> List[Spending]:
-    spendings = await spendings_database.get_all()
+async def retrieve_all_spendings(user: str=Depends(authenticate)) -> List[Spending]:
+    spendings = await spendings_database.get_all(user)
     return spendings
 
 
 @event_router.get("/{id}", response_model=Spending)
-async def retrieve_event(id: PydanticObjectId) -> Spending:
-    event = await spendings_database.get(id)
+async def retrieve_event(id: PydanticObjectId, user: str=Depends(authenticate)) -> Spending:
+    spending = await spendings_database.get(id)
+
+    if spending.creator != user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Operation not allowed",
+        )
     
-    if not event:
+    if not spending:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Record with supplied ID does not exist"
         )
     
-    return event
+    return spending
 
 
 @event_router.post("/new")
-async def create_event(body: Spending) -> dict:
+async def create_event(body: Spending, user: str=Depends(authenticate)) -> dict:
+    body.creator = user
     await spendings_database.save(body)
     return {
         "message": "Record created successfully"
@@ -40,7 +48,16 @@ async def create_event(body: Spending) -> dict:
 
 
 @event_router.put("/{id}")
-async def update_event(id: PydanticObjectId, body: SpendingUpdate) -> Spending:
+async def update_event(id: PydanticObjectId, body: SpendingUpdate, user: str=Depends(authenticate)) -> Spending:
+    # Check if the user who's trying to update a record is the record's creator
+    spending = await spendings_database.get(id)
+    if spending.creator != user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Operation not allowed",
+        )
+    
+    # Updating selected record
     updated_spending = await spendings_database.update(id, body)
     if not updated_spending:
         raise HTTPException(
@@ -51,10 +68,18 @@ async def update_event(id: PydanticObjectId, body: SpendingUpdate) -> Spending:
 
 
 @event_router.delete("/{id}")
-async def delete_event(id: PydanticObjectId) -> dict:
-    spending = await spendings_database.delete(id)
+async def delete_event(id: PydanticObjectId, user: str=Depends(authenticate)) -> dict:
+    spending_to_delete = await spendings_database.get(id)
 
-    if not spending:
+    if spending_to_delete.creator != user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Operation not allowed",
+        )
+    
+    spending_deleted = await spendings_database.delete(id)
+
+    if not spending_deleted:
         raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Record with supplied ID does not exist"

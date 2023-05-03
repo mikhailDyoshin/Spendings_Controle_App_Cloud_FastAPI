@@ -4,6 +4,8 @@ from beanie import Document
 
 
 class Spending(Document):
+    _id: Optional[str]
+    creator: Optional[str]
     date: str
     food: float
     transport: float
@@ -13,6 +15,7 @@ class Spending(Document):
     class Config:
         schema_extra = {
             "example": {
+                "_id": "64511f71dbad5f6828103501",
                 "date": "2023-04-28",
                 "food": 112.15,
                 "transport":  10.11,
