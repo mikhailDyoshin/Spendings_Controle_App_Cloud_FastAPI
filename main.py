@@ -11,7 +11,7 @@ settings = Settings()
 
 # Register routes
 app.include_router(user_router, prefix='/user')
-app.include_router(event_router, prefix='/event')
+app.include_router(event_router, prefix='/spending')
 
 # Initializing the database when the app starts up
 @app.on_event('startup')

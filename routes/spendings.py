@@ -7,7 +7,7 @@ from auth.authenticate import authenticate
 
 
 event_router = APIRouter(
-    tags=["Events"]
+    tags=["Spendings"]
 )
 
 spendings_database = Database(Spending)
@@ -23,16 +23,16 @@ async def retrieve_all_spendings(user: str=Depends(authenticate)) -> List[Spendi
 async def retrieve_event(id: PydanticObjectId, user: str=Depends(authenticate)) -> Spending:
     spending = await spendings_database.get(id)
 
-    if spending.creator != user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Operation not allowed",
-        )
-    
     if not spending:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Record with supplied ID does not exist"
+        )
+
+    if spending.creator != user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Operation not allowed",
         )
     
     return spending
@@ -49,8 +49,16 @@ async def create_event(body: Spending, user: str=Depends(authenticate)) -> dict:
 
 @event_router.put("/{id}")
 async def update_event(id: PydanticObjectId, body: SpendingUpdate, user: str=Depends(authenticate)) -> Spending:
-    # Check if the user who's trying to update a record is the record's creator
+    
+    # Check if the record exists
     spending = await spendings_database.get(id)
+    if not spending:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event with supplied ID does not exist"
+        )
+    
+    # Check if the user who's trying to update a record is the record's creator
     if spending.creator != user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -59,17 +67,19 @@ async def update_event(id: PydanticObjectId, body: SpendingUpdate, user: str=Dep
     
     # Updating selected record
     updated_spending = await spendings_database.update(id, body)
-    if not updated_spending:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Event with supplied ID does not exist"
-        )
+    
     return updated_spending
 
 
 @event_router.delete("/{id}")
 async def delete_event(id: PydanticObjectId, user: str=Depends(authenticate)) -> dict:
     spending_to_delete = await spendings_database.get(id)
+
+    if not spending_to_delete:
+        raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Record with supplied ID does not exist"
+        )
 
     if spending_to_delete.creator != user:
         raise HTTPException(
@@ -79,12 +89,8 @@ async def delete_event(id: PydanticObjectId, user: str=Depends(authenticate)) ->
     
     spending_deleted = await spendings_database.delete(id)
 
-    if not spending_deleted:
-        raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="Record with supplied ID does not exist"
-        )
+    if spending_deleted:
 
-    return {
-        "message": "Record deleted successfully"
-    }
+        return {
+            "message": "Record deleted successfully"
+        }
